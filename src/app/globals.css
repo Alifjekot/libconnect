@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+:root {
+  /* --- COLOR SCHEME CHOICES --- */
+
+  /* Choice 1: Royal Blue (Modern/Academic) - CURRENT */
+  /*--primary: #1e40af;
+  --primary-hover: #1e3a8a;
+  --glass-border: rgba(30, 64, 175, 0.1);*/
+
+  /*Choice 2: Emerald Green (Islamic/Nature)
+  --primary: #059669;
+  --primary-hover: #047857;
+  --glass-border: rgba(5, 150, 105, 0.1);*/
+
+  /* Choice 3: Ruby Red (Formal/Passionate)*/
+  --primary: #be123c;
+  --primary-hover: #9f1239;
+  --glass-border: rgba(190, 18, 60, 0.1);
+
+  /* Choice 4: Deep Indigo (Professional)
+  --primary: #4338ca;
+  --primary-hover: #3730a3;
+  --glass-border: rgba(67, 56, 202, 0.1);
+  */
+
+  --background: #ffffff;
+  --foreground: #1e293b;
+  --card-bg: rgba(255, 255, 255, 0.9);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #030712;
+    --foreground: #f8fafc;
+    --card-bg: rgba(17, 24, 39, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+}
+
+@keyframes blob {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+.glass {
+  background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+}
