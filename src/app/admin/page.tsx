@@ -245,7 +245,7 @@ export default function AdminPage() {
             ].map((p) => (
               <button
                 key={p.id}
-                onClick={() => setPeriod(p.id as any)}
+                onClick={() => setPeriod(p.id as typeof period)}
                 className={`flex-1 py-3 px-1 rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-tight transition-all whitespace-nowrap ${
                   period === p.id 
                   ? "bg-primary text-white shadow-lg shadow-primary/30" 

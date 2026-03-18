@@ -3,19 +3,26 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
+// Helper to check for Prisma error codes without 'any'
+function isPrismaError(error: unknown): error is { code: string; message: string; meta?: unknown } {
+  return typeof error === 'object' && error !== null && 'code' in error;
+}
+
 export async function checkStudent(ic: string) {
   try {
     const student = await prisma.student.findUnique({
       where: { ic },
     });
     return { exists: !!student, student };
-  } catch (error: any) {
-    console.error("Check student error details:", {
-      message: error.message,
-      code: error.code,
-      meta: error.meta
-    });
-    return { exists: false, error: "Gagal menyemak status pelajar." };
+  } catch (error) {
+    let message = "Gagal menyemak status pelajar.";
+    let code = "UNKNOWN";
+    
+    if (error instanceof Error) message = error.message;
+    if (isPrismaError(error)) code = error.code;
+    
+    console.error("Check student error details:", { message, code });
+    return { exists: false, error: message };
   }
 }
 
@@ -30,13 +37,22 @@ export async function registerStudent(data: { ic: string; name: string; kelas: s
       },
     });
     return { success: true, student };
-  } catch (error: any) {
+  } catch (error) {
+    let userErrorMessage = "Gagal mendaftar pelajar: Ralat tidak diketahui";
+    if (isPrismaError(error)) {
+      if (error.code === 'P2002') {
+        userErrorMessage = "No. Kad Pengenalan ini sudah didaftarkan.";
+      } else {
+        userErrorMessage = `Gagal mendaftar pelajar: ${error.message}`;
+      }
+    } else if (error instanceof Error) {
+      userErrorMessage = `Gagal mendaftar pelajar: ${error.message}`;
+    }
+
     console.error("Register student error:", error);
-    return { 
-      success: false, 
-      error: error.code === 'P2002' 
-        ? "No. Kad Pengenalan ini sudah didaftarkan." 
-        : `Gagal mendaftar pelajar: ${error.message || "Ralat tidak diketahui"}` 
+    return {
+      success: false,
+      error: userErrorMessage
     };
   }
 }
@@ -51,7 +67,7 @@ export async function submitAttendance(ic: string, purpose: string) {
       return { success: false, error: "Pelajar tidak dijumpai. Sila daftar terlebih dahulu.", needsRegistration: true };
     }
 
-    await prisma.attendance.create({
+    const attendance = await prisma.attendance.create({
       data: {
         studentId: student.id,
         purpose,
@@ -59,13 +75,9 @@ export async function submitAttendance(ic: string, purpose: string) {
     });
 
     revalidatePath("/");
-    return { success: true };
-  } catch (error: any) {
-    console.error("Attendance submission error details:", {
-      message: error.message,
-      code: error.code,
-      meta: error.meta
-    });
+    return { success: true, attendance };
+  } catch (error) {
+    console.error("Attendance submission error:", error);
     return { success: false, error: "Gagal merekod kehadiran." };
   }
 }
@@ -94,15 +106,15 @@ export async function getMonthlyRanking() {
       take: 10,
     });
 
-    const studentIds = rankings.map((r: { studentId: string }) => r.studentId);
+    const studentIds = rankings.map((r) => r.studentId);
     const students = await prisma.student.findMany({
       where: {
         id: { in: studentIds },
       },
     });
 
-    return rankings.map((rank: { studentId: string; _count: { studentId: number } }) => {
-      const student = students.find((s: { id: string }) => s.id === rank.studentId);
+    return rankings.map((rank) => {
+      const student = students.find((s) => s.id === rank.studentId);
       return {
         ic: student?.ic || "Unknown",
         name: student?.name || student?.ic || "Unknown",
@@ -113,6 +125,12 @@ export async function getMonthlyRanking() {
     console.error("Ranking fetch error:", error);
     return [];
   }
+}
+
+interface StudentWithStats {
+  _count?: {
+    attendances: number;
+  };
 }
 
 export async function getStudentsWithStats(period: 'daily' | 'weekly' | 'monthly' | 'all' = 'all') {
@@ -146,8 +164,12 @@ export async function getStudentsWithStats(period: 'daily' | 'weekly' | 'monthly
     });
 
     // Sort by attendance count descending
-    return students.sort((a, b) => (b._count?.attendances || 0) - (a._count?.attendances || 0));
-  } catch (error: any) {
+    return [...students].sort((a, b) => {
+      const bCount = (b as unknown as StudentWithStats)._count?.attendances || 0;
+      const aCount = (a as unknown as StudentWithStats)._count?.attendances || 0;
+      return bCount - aCount;
+    });
+  } catch (error) {
     console.error("Fetch students with stats error:", error);
     return [];
   }
@@ -165,7 +187,7 @@ export async function updateStudent(id: string, data: { name: string; kelas: str
     });
     revalidatePath("/admin");
     return { success: true };
-  } catch (error: any) {
+  } catch (error) {
     console.error("Update student error:", error);
     return { success: false, error: "Gagal mengemaskini pelajar." };
   }
@@ -173,7 +195,6 @@ export async function updateStudent(id: string, data: { name: string; kelas: str
 
 export async function deleteStudent(id: string) {
   try {
-    // Delete attendances first due to relation
     await prisma.attendance.deleteMany({
       where: { studentId: id }
     });
@@ -182,7 +203,7 @@ export async function deleteStudent(id: string) {
     });
     revalidatePath("/admin");
     return { success: true };
-  } catch (error: any) {
+  } catch (error) {
     console.error("Delete student error:", error);
     return { success: false, error: "Gagal memadam pelajar." };
   }
@@ -190,6 +211,7 @@ export async function deleteStudent(id: string) {
 
 export async function importStudents(students: { ic: string; name: string; kelas: string; umur: number }[]) {
   try {
+    let insertedCount = 0;
     for (const s of students) {
       await prisma.student.upsert({
         where: { ic: s.ic },
@@ -205,11 +227,12 @@ export async function importStudents(students: { ic: string; name: string; kelas
           umur: s.umur,
         },
       });
+      insertedCount++;
     }
     revalidatePath("/admin");
-    return { success: true, count: students.length };
-  } catch (error: any) {
-    console.error("Import students error:", error);
+    return { success: true, count: insertedCount };
+  } catch (error) {
+    console.error("Import error:", error);
     return { success: false, error: "Gagal mengimport data." };
   }
 }
@@ -228,7 +251,7 @@ export async function getAttendanceStats() {
       },
     });
 
-    const monthlyCount = await prisma.attendance.count({
+    const mCount = await prisma.attendance.count({
       where: {
         createdAt: {
           gte: startOfMonth,
@@ -236,7 +259,7 @@ export async function getAttendanceStats() {
       },
     });
 
-    return { dailyCount, monthlyCount };
+    return { dailyCount, monthlyCount: mCount };
   } catch (error) {
     console.error("Stats fetch error:", error);
     return { dailyCount: 0, monthlyCount: 0 };
