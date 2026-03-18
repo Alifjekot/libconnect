@@ -106,15 +106,15 @@ export async function getMonthlyRanking() {
       take: 10,
     });
 
-    const studentIds = rankings.map((r) => r.studentId);
+    const studentIds = rankings.map((r: { studentId: string }) => r.studentId);
     const students = await prisma.student.findMany({
       where: {
         id: { in: studentIds },
       },
     });
 
-    return rankings.map((rank) => {
-      const student = students.find((s) => s.id === rank.studentId);
+    return rankings.map((rank: { studentId: string; _count: { studentId: number } }) => {
+      const student = students.find((s: { id: string }) => s.id === rank.studentId);
       return {
         ic: student?.ic || "Unknown",
         name: student?.name || student?.ic || "Unknown",
@@ -128,6 +128,11 @@ export async function getMonthlyRanking() {
 }
 
 interface StudentWithStats {
+  id: string;
+  name: string;
+  kelas: string;
+  umur: number;
+  ic: string;
   _count?: {
     attendances: number;
   };
