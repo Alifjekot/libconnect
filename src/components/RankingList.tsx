@@ -7,6 +7,7 @@ import { getMonthlyRanking } from "@/app/actions";
 
 interface Ranking {
   ic: string;
+  noAhli: number;
   name: string;
   count: number;
 }
@@ -28,9 +29,8 @@ export default function RankingList() {
     return () => { isMounted = false; };
   }, []);
 
-  const maskIC = (ic: string) => {
-    if (ic.length < 6) return ic;
-    return `${ic.slice(0, 6)}-XX-${ic.slice(-4)}`;
+  const formatNoAhli = (no: number) => {
+    return `#${no.toString().padStart(3, '0')}`;
   };
 
   if (loading) {
@@ -88,11 +88,11 @@ export default function RankingList() {
               
               <div className="grow">
                 <p className={`font-black dark:text-white leading-none mb-2 ${index === 0 ? 'text-xl' : 'text-lg'}`}>
-                  {rank.name || maskIC(rank.ic)}
+                  {rank.name || rank.ic}
                 </p>
                 <div className="flex items-center gap-3">
                   <p className="text-xs text-slate-500 dark:text-slate-400 uppercase font-black tracking-widest leading-none">
-                    {maskIC(rank.ic)}
+                    {formatNoAhli(rank.noAhli)}
                   </p>
                   <span className="text-xs text-slate-400 opacity-30">•</span>
                   <p className="text-xs text-primary uppercase font-black tracking-widest leading-none flex items-center gap-1.5">

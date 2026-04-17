@@ -143,12 +143,22 @@ export default function Home() {
                     <span className="text-xs font-black text-slate-600 dark:text-slate-300">{stats.monthlyCount}</span>
                   </div>
                 </div>
-                <button 
-                  onClick={() => router.push("/admin")}
-                  className="p-2 text-slate-300 dark:text-slate-700 hover:text-primary transition-colors"
-                >
-                  <Settings size={16} />
-                </button>
+                <div className="flex gap-1">
+                  <button 
+                    onClick={() => router.push("/guru")}
+                    className="p-2 text-slate-300 dark:text-slate-700 hover:text-primary transition-colors flex items-center gap-1 group"
+                    title="Kehadiran Pukal (Guru)"
+                  >
+                    <Users size={16} />
+                  </button>
+                  <button 
+                    onClick={() => router.push("/admin")}
+                    className="p-2 text-slate-300 dark:text-slate-700 hover:text-primary transition-colors"
+                    title="Dashboard Admin"
+                  >
+                    <Settings size={16} />
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -163,23 +173,26 @@ export default function Home() {
                   <div className="relative space-y-3">
                     <div className="flex items-center justify-between">
                       <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                        <User className="text-primary" size={18} /> Identiti Pelajar
+                        <User className="text-primary" size={18} /> No. Ahli Perpustakaan
                       </h3>
-                      <span className="text-[9px] font-black text-primary/30 uppercase tracking-[0.2em]">Sila masukkan No. KP</span>
+                      <span className="text-[9px] font-black text-primary/30 uppercase tracking-[0.2em]">Masukkan No. 1 - 300</span>
                     </div>
                     <div className="relative group/input">
                       <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-primary/40 group-focus-within/input:text-primary transition-colors">
-                        <User size={20} />
+                        <div className="font-black text-sm">#</div>
                       </div>
                       <input
                         type="text"
-                        placeholder="000101010000"
+                        placeholder="Contoh: 1"
                         value={ic}
                         onChange={(e) => {
-                          setIc(e.target.value);
-                          if (error) setError(null);
+                          const val = e.target.value;
+                          if (val === "" || /^\d+$/.test(val)) {
+                            setIc(val);
+                            if (error) setError(null);
+                          }
                         }}
-                        className="w-full pl-12 pr-4 py-4 rounded-2xl border-none ring-1 ring-slate-200 dark:ring-slate-800 bg-white/40 dark:bg-slate-950/40 focus:ring-4 focus:ring-primary/20 outline-none transition-all text-xl md:text-2xl font-black tracking-[0.2em] placeholder:tracking-normal placeholder:font-medium text-slate-900 dark:text-white"
+                        className="w-full pl-12 pr-4 py-4 rounded-2xl border-none ring-1 ring-slate-200 dark:ring-slate-800 bg-white/40 dark:bg-slate-950/40 focus:ring-4 focus:ring-primary/20 outline-none transition-all text-2xl md:text-3xl font-black tracking-normal placeholder:tracking-normal placeholder:font-medium text-slate-900 dark:text-white"
                       />
                     </div>
                     <AnimatePresence>

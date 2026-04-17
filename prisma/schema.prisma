@@ -10,6 +10,8 @@ datasource db {
 model Student {
   id          String       @id @default(cuid())
   ic          String       @unique
+  noAhli      Int?         @unique
+  role        String       @default("MURID")
   name        String?
   kelas       String?
   umur        Int?

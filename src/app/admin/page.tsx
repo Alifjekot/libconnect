@@ -22,10 +22,12 @@ import { getStudentsWithStats, updateStudent, deleteStudent, importStudents } fr
 
 interface Student {
   id: string;
+  noAhli: number | null;
   ic: string;
   name: string | null;
   kelas: string | null;
   umur: number | null;
+  role: string | null;
   _count?: {
     attendances: number;
   };
@@ -41,6 +43,7 @@ export default function AdminPage() {
   const [importData, setImportData] = useState("");
   const [importFileName, setImportFileName] = useState("");
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'all'>('all');
+  const [roleFilter, setRoleFilter] = useState<'ALL' | 'MURID' | 'GURU'>('ALL');
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   const loadStudents = async (selectedPeriod: typeof period = period) => {
@@ -149,11 +152,16 @@ export default function AdminPage() {
     window.print();
   };
 
-  const filteredStudents = students.filter(s => 
-    (s.name?.toLowerCase() || "").includes(search.toLowerCase()) || 
-    s.ic.includes(search) ||
-    (s.kelas?.toLowerCase() || "").includes(search.toLowerCase())
-  );
+  const filteredStudents = students.filter(s => {
+    const matchesSearch = (s.name?.toLowerCase() || "").includes(search.toLowerCase()) || 
+      s.ic.includes(search) ||
+      (s.noAhli?.toString() || "").includes(search) ||
+      (s.kelas?.toLowerCase() || "").includes(search.toLowerCase());
+    
+    const matchesRole = roleFilter === 'ALL' || s.role === roleFilter;
+    
+    return matchesSearch && matchesRole;
+  });
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#020617] p-8">
@@ -222,17 +230,38 @@ export default function AdminPage() {
         {/* Search & Stats & Filters */}
         <div className="grid lg:grid-cols-12 gap-6 no-print">
           {/* Search Bar */}
-          <div className="lg:col-span-6 relative">
+          <div className="lg:col-span-4 relative">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
               <Search size={20} />
             </div>
             <input 
               type="text" 
-              placeholder="Cari nama, IC atau kelas..."
+              placeholder="Cari nama, No. Ahli, IC atau kelas..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-12 pr-4 py-4 rounded-3xl glass border-white/20 dark:border-slate-800/50 outline-none focus:ring-2 focus:ring-primary transition-all font-medium"
             />
+          </div>
+
+          {/* Role Filter */}
+          <div className="lg:col-span-2 glass p-1.5 rounded-3xl border-white/20 dark:border-slate-800/50 flex gap-1 no-print">
+            {[
+              { id: 'ALL', label: 'Semua' },
+              { id: 'MURID', label: 'Murid' },
+              { id: 'GURU', label: 'Guru' }
+            ].map((r) => (
+              <button
+                key={r.id}
+                onClick={() => setRoleFilter(r.id as any)}
+                className={`flex-1 py-3 px-1 rounded-2xl text-[10px] uppercase font-black tracking-tight transition-all ${
+                  roleFilter === r.id 
+                  ? "bg-primary text-white" 
+                  : "text-slate-400 hover:text-slate-600"
+                }`}
+              >
+                {r.label}
+              </button>
+            ))}
           </div>
 
           {/* Period Selector (Filter) */}
@@ -277,13 +306,13 @@ export default function AdminPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-100/50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 font-bold text-sm uppercase tracking-wider">
-                  <th className="px-8 py-5">No. IC</th>
+                  <th className="px-8 py-5"># ID</th>
                   <th className="px-8 py-5">Nama Penuh</th>
+                  <th className="px-8 py-5">Peranan</th>
                   <th className="px-8 py-5">Kelas</th>
-                  <th className="px-8 py-5 text-center">Umur</th>
                   <th className="px-8 py-5 text-center flex items-center justify-center gap-2">
                     <Clock size={16} className="text-primary" />
-                    <span>Kunjungan ({period === 'all' ? 'Semua' : period === 'daily' ? 'Hari Ini' : period === 'weekly' ? 'Minggu Ini' : 'Bulan Ini'})</span>
+                    <span>Kunjungan</span>
                   </th>
                   <th className="px-8 py-5 text-right no-print">Tindakan</th>
                 </tr>
@@ -302,10 +331,19 @@ export default function AdminPage() {
                 ) : (
                   filteredStudents.map((s) => (
                     <tr key={s.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors group">
-                      <td className="px-8 py-4 font-mono font-bold text-slate-400 dark:text-slate-500">{s.ic}</td>
-                      <td className="px-8 py-4 font-bold text-slate-800 dark:text-slate-200">{s.name || "-"}</td>
+                      <td className="px-8 py-4 font-mono font-black text-primary bg-primary/5">#{s.noAhli}</td>
+                      <td className="px-8 py-4">
+                        <p className="font-bold text-slate-800 dark:text-slate-200">{s.name || "-"}</p>
+                        <p className="text-[10px] font-mono text-slate-400">IC: {s.ic}</p>
+                      </td>
+                      <td className="px-8 py-4">
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${
+                          s.role === 'GURU' ? 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                        }`}>
+                          {s.role}
+                        </span>
+                      </td>
                       <td className="px-8 py-4 font-medium text-slate-600 dark:text-slate-400">{s.kelas || "-"}</td>
-                      <td className="px-8 py-4 text-center font-bold text-slate-800 dark:text-slate-200">{s.umur || "-"}</td>
                       <td className="px-8 py-4 text-center">
                         <span className="px-3 py-1 bg-primary/10 text-primary rounded-lg text-xs font-black">
                           {s._count?.attendances || 0}
@@ -362,8 +400,11 @@ export default function AdminPage() {
 
               <form onSubmit={handleUpdate} className="space-y-6">
                 <div className="space-y-2 opacity-60">
-                  <label className="text-sm font-bold ml-1 uppercase tracking-wider">No. IC (Tidak boleh diubah)</label>
-                  <input type="text" value={editingStudent.ic} readOnly className="w-full px-4 py-4 rounded-2xl bg-slate-100 dark:bg-slate-800 border-none font-mono font-bold" />
+                  <label className="text-sm font-bold ml-1 uppercase tracking-wider">No. IC & No. Ahli (Tidak boleh diubah)</label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <input type="text" value={editingStudent.ic} readOnly className="w-full px-4 py-4 rounded-2xl bg-slate-100 dark:bg-slate-800 border-none font-mono font-bold" />
+                    <input type="text" value={`#${editingStudent.noAhli}`} readOnly className="w-full px-4 py-4 rounded-2xl bg-slate-100 dark:bg-slate-800 border-none font-mono font-bold text-primary" />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-bold ml-1 uppercase tracking-wider text-slate-500">Nama Penuh</label>

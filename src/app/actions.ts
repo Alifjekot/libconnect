@@ -8,45 +8,58 @@ function isPrismaError(error: unknown): error is { code: string; message: string
   return typeof error === 'object' && error !== null && 'code' in error;
 }
 
-export async function checkStudent(ic: string) {
+export async function checkStudent(identifier: string) {
   try {
-    const student = await prisma.student.findUnique({
-      where: { ic },
+    // Check if it's a numeric ID (noAhli) or IC
+    const isNumeric = /^\d+$/.test(identifier);
+    
+    const student = await prisma.student.findFirst({
+      where: {
+        OR: [
+          { ic: identifier },
+          { noAhli: isNumeric ? parseInt(identifier) : undefined }
+        ]
+      },
     });
     return { exists: !!student, student };
   } catch (error) {
     let message = "Gagal menyemak status pelajar.";
-    let code = "UNKNOWN";
-    
     if (error instanceof Error) message = error.message;
-    if (isPrismaError(error)) code = error.code;
-    
-    console.error("Check student error details:", { message, code });
     return { exists: false, error: message };
   }
 }
 
-export async function registerStudent(data: { ic: string; name: string; kelas: string; umur: number }) {
+export async function registerStudent(data: { ic: string; name: string; kelas: string; umur: number; role?: string }) {
   try {
+    // Get next noAhli
+    const lastStudent = await prisma.student.findFirst({
+      orderBy: { noAhli: 'desc' },
+      where: { noAhli: { not: null } }
+    });
+    
+    const nextNoAhli = (lastStudent?.noAhli || 0) + 1;
+
     const student = await prisma.student.create({
       data: {
         ic: data.ic,
         name: data.name,
         kelas: data.kelas,
         umur: data.umur,
+        role: data.role || "MURID",
+        noAhli: nextNoAhli,
       },
     });
     return { success: true, student };
   } catch (error) {
-    let userErrorMessage = "Gagal mendaftar pelajar: Ralat tidak diketahui";
+    let userErrorMessage = "Gagal mendaftar: Ralat tidak diketahui";
     if (isPrismaError(error)) {
       if (error.code === 'P2002') {
-        userErrorMessage = "No. Kad Pengenalan ini sudah didaftarkan.";
+        userErrorMessage = "No. KP atau No. Ahli sudah didaftarkan.";
       } else {
-        userErrorMessage = `Gagal mendaftar pelajar: ${error.message}`;
+        userErrorMessage = `Gagal mendaftar: ${error.message}`;
       }
     } else if (error instanceof Error) {
-      userErrorMessage = `Gagal mendaftar pelajar: ${error.message}`;
+      userErrorMessage = `Gagal mendaftar: ${error.message}`;
     }
 
     console.error("Register student error:", error);
@@ -57,10 +70,17 @@ export async function registerStudent(data: { ic: string; name: string; kelas: s
   }
 }
 
-export async function submitAttendance(ic: string, purpose: string) {
+export async function submitAttendance(identifier: string, purpose: string) {
   try {
-    const student = await prisma.student.findUnique({
-      where: { ic },
+    const isNumeric = /^\d+$/.test(identifier);
+    
+    const student = await prisma.student.findFirst({
+      where: {
+        OR: [
+          { ic: identifier },
+          { noAhli: isNumeric ? parseInt(identifier) : undefined }
+        ]
+      },
     });
 
     if (!student) {
@@ -117,6 +137,7 @@ export async function getMonthlyRanking() {
       const student = students.find((s: { id: string }) => s.id === rank.studentId);
       return {
         ic: student?.ic || "Unknown",
+        noAhli: student?.noAhli,
         name: student?.name || student?.ic || "Unknown",
         count: rank._count.studentId,
       };
@@ -239,6 +260,38 @@ export async function importStudents(students: { ic: string; name: string; kelas
   } catch (error) {
     console.error("Import error:", error);
     return { success: false, error: "Gagal mengimport data." };
+  }
+}
+
+export async function getStudentsByClass(kelas: string) {
+  try {
+    return await prisma.student.findMany({
+      where: { kelas, role: "MURID" },
+      orderBy: { name: 'asc' }
+    });
+  } catch (error) {
+    console.error("Fetch by class error:", error);
+    return [];
+  }
+}
+
+export async function submitBulkAttendance(studentIds: string[], purpose: string) {
+  try {
+    const data = studentIds.map(id => ({
+      studentId: id,
+      purpose,
+    }));
+
+    await prisma.attendance.createMany({
+      data,
+    });
+
+    revalidatePath("/");
+    revalidatePath("/admin");
+    return { success: true };
+  } catch (error) {
+    console.error("Bulk attendance error:", error);
+    return { success: false, error: "Gagal merekod kehadiran pukal." };
   }
 }
 

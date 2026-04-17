@@ -25,14 +25,16 @@ function RegistrationForm() {
     name: "",
     kelas: "",
     umur: "",
+    role: "MURID",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [assignedNo, setAssignedNo] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.kelas || !formData.umur) {
+    if (!formData.name || (formData.role === "MURID" && (!formData.kelas || !formData.umur))) {
       setError("Sila lengkapkan semua maklumat.");
       return;
     }
@@ -43,11 +45,13 @@ function RegistrationForm() {
     const result = await registerStudent({
       ic: formData.ic,
       name: formData.name,
-      kelas: formData.kelas,
-      umur: parseInt(formData.umur),
+      kelas: formData.role === "GURU" ? "STAF" : formData.kelas,
+      umur: formData.role === "GURU" ? 0 : parseInt(formData.umur),
+      role: formData.role,
     });
 
     if (result.success) {
+      setAssignedNo(result.student?.noAhli || null);
       // Auto-submit attendance if purpose exists
       if (purposeFromUrl) {
         await submitAttendance(formData.ic, purposeFromUrl);
@@ -56,7 +60,7 @@ function RegistrationForm() {
       setIsSuccess(true);
       setTimeout(() => {
         router.push("/");
-      }, 2000);
+      }, 5000); // Give more time to read the No. Ahli
     } else {
       setError(result.error || "Gagal mendaftar pelajar.");
       setIsSubmitting(false);
@@ -119,6 +123,28 @@ function RegistrationForm() {
               onSubmit={handleSubmit}
               className="glass p-8 rounded-4xl border-white/40 dark:border-slate-800/50 shadow-2xl space-y-6"
             >
+              <motion.div variants={itemVariants} className="space-y-3">
+                <label className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1">
+                  Saya Adalah...
+                </label>
+                <div className="grid grid-cols-2 gap-4">
+                  {['MURID', 'GURU'].map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, role: r })}
+                      className={`py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all border-2 ${
+                        formData.role === r 
+                        ? "bg-primary text-white border-primary shadow-lg shadow-primary/20" 
+                        : "bg-white/50 dark:bg-slate-900/50 text-slate-400 border-white/20 dark:border-slate-800/50"
+                      }`}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+
               <motion.div variants={itemVariants} className="space-y-2">
                 <label className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1 flex items-center gap-2">
                   <User size={16} /> No. Kad Pengenalan
@@ -144,33 +170,42 @@ function RegistrationForm() {
                 />
               </motion.div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <motion.div variants={itemVariants} className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1 flex items-center gap-2">
-                    <School size={16} /> Kelas
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: 5 Bijak"
-                    value={formData.kelas}
-                    onChange={(e) => setFormData({ ...formData, kelas: e.target.value })}
-                    className="w-full px-4 py-4 rounded-2xl bg-white/70 dark:bg-slate-950/70 border-none ring-1 ring-slate-200 dark:ring-slate-800 focus:ring-2 focus:ring-primary outline-none transition-all font-medium"
-                  />
-                </motion.div>
+              <AnimatePresence>
+                {formData.role === 'MURID' && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="grid grid-cols-2 gap-4 overflow-hidden"
+                  >
+                    <motion.div variants={itemVariants} className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1 flex items-center gap-2">
+                        <School size={16} /> Kelas
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: 5 Bijak"
+                        value={formData.kelas}
+                        onChange={(e) => setFormData({ ...formData, kelas: e.target.value })}
+                        className="w-full px-4 py-4 rounded-2xl bg-white/70 dark:bg-slate-950/70 border-none ring-1 ring-slate-200 dark:ring-slate-800 focus:ring-2 focus:ring-primary outline-none transition-all font-medium"
+                      />
+                    </motion.div>
 
-                <motion.div variants={itemVariants} className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1 flex items-center gap-2">
-                    <Calendar size={16} /> Umur
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="17"
-                    value={formData.umur}
-                    onChange={(e) => setFormData({ ...formData, umur: e.target.value })}
-                    className="w-full px-4 py-4 rounded-2xl bg-white/70 dark:bg-slate-950/70 border-none ring-1 ring-slate-200 dark:ring-slate-800 focus:ring-2 focus:ring-primary outline-none transition-all font-medium"
-                  />
-                </motion.div>
-              </div>
+                    <motion.div variants={itemVariants} className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1 flex items-center gap-2">
+                        <Calendar size={16} /> Umur
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="17"
+                        value={formData.umur}
+                        onChange={(e) => setFormData({ ...formData, umur: e.target.value })}
+                        className="w-full px-4 py-4 rounded-2xl bg-white/70 dark:bg-slate-950/70 border-none ring-1 ring-slate-200 dark:ring-slate-800 focus:ring-2 focus:ring-primary outline-none transition-all font-medium"
+                      />
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {error && (
                 <motion.p 
@@ -205,7 +240,11 @@ function RegistrationForm() {
             </div>
             <div className="space-y-2">
               <h2 className="text-4xl font-black text-slate-900 dark:text-white">Pendaftaran Berjaya!</h2>
-              <p className="text-xl text-slate-500 dark:text-slate-400">Selamat datang, {formData.name}. Kembali ke laman utama...</p>
+              <div className="py-6 px-10 bg-primary/10 rounded-3xl border border-primary/20 inline-block">
+                <p className="text-xs font-black text-primary uppercase tracking-[0.3em] mb-1">No. Ahli Anda</p>
+                <p className="text-6xl font-black text-primary">#{assignedNo}</p>
+              </div>
+              <p className="text-xl text-slate-500 dark:text-slate-400 mt-6">Selamat datang, {formData.name}. Sila gunakan No. Ahli ini untuk kunjungan akan datang.</p>
             </div>
           </motion.div>
         )}
