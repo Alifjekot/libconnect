@@ -7,7 +7,7 @@ import { getMonthlyRanking } from "@/app/actions";
 
 interface Ranking {
   ic: string;
-  noAhli: number;
+  noAhli: number | null;
   name: string;
   count: number;
 }
@@ -29,8 +29,8 @@ export default function RankingList() {
     return () => { isMounted = false; };
   }, []);
 
-  const formatNoAhli = (no: number) => {
-    return `#${no.toString().padStart(3, '0')}`;
+  const formatNoAhli = (no: number | null) => {
+    return `#${no?.toString().padStart(3, '0') || '000'}`;
   };
 
   if (loading) {

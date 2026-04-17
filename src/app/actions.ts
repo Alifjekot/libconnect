@@ -137,7 +137,7 @@ export async function getMonthlyRanking() {
       const student = students.find((s: { id: string }) => s.id === rank.studentId);
       return {
         ic: student?.ic || "Unknown",
-        noAhli: student?.noAhli,
+        noAhli: student?.noAhli ?? null,
         name: student?.name || student?.ic || "Unknown",
         count: rank._count.studentId,
       };
